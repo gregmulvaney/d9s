@@ -1,0 +1,6 @@
+# go outputs
+bin/
+temp/
+
+# dev files
+.envrc
