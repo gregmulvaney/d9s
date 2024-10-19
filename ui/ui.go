@@ -7,7 +7,6 @@ import (
 	"github.com/gregmulvaney/d9s/ui/components/command"
 	"github.com/gregmulvaney/d9s/ui/components/content"
 	"github.com/gregmulvaney/d9s/ui/components/header"
-	"github.com/gregmulvaney/d9s/ui/components/messages"
 )
 
 type sessionState int
@@ -18,10 +17,10 @@ const (
 )
 
 type Model struct {
-	width, height   int
 	state           sessionState
-	showCommandView bool
+	width, height   int
 	dockerClient    *docker.Client
+	showCommandView bool
 	header          header.Model
 	command         command.Model
 	content         content.Model
@@ -34,55 +33,50 @@ func New() Model {
 	}
 
 	return Model{
-		dockerClient: dockerClient,
-		header:       header.New(dockerClient),
-		command:      command.New(),
-		content:      content.New(dockerClient),
+		state:           contentView,
+		dockerClient:    dockerClient,
+		showCommandView: false,
+		header:          header.New(dockerClient),
+		command:         command.New(),
+		content:         content.New(dockerClient),
 	}
 }
 
-func (m Model) Init() tea.Cmd {
-	return nil
-}
+func (m Model) Init() tea.Cmd { return nil }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	var cmds []tea.Cmd
 
 	switch msg := msg.(type) {
+	// Handle key messages
 	case tea.KeyMsg:
 		switch msg.String() {
-		case "ctrl+c":
-			// Quit the app
+		case tea.KeyCtrlC.String():
 			return m, tea.Quit
-
-		case "ctrl+a":
-			return m, messages.SendCommand("Network")
-
 		case ":":
-			// Show the command view
 			if !m.showCommandView {
-				m.showCommandView = true
 				m.state = commandView
+				m.showCommandView = true
+				return m, command.Focus()
 			}
-
-		case "esc":
-			// Hide the command view
-			if m.showCommandView {
-				m.showCommandView = false
-				m.state = contentView
-			}
+        case "esc":
+            if m.showCommandView {
+                m.state = contentView
+                m.showCommandView = false
+            }
 		}
-		// Route messages to active model
-
+	// Pass command to content
+	case content.CommandMsg:
+		m.state = contentView
+		m.showCommandView = false
+		m.content, cmd = m.content.Update(msg)
+		cmds = append(cmds, cmd)
+		return m, command.Clear()
+	// Handle window size messages
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
-		// TODO: Rework routing window resize messages
-		m.command, cmd = m.command.Update(msg)
-		cmds = append(cmds, cmd)
-		m.content, cmd = m.content.Update(msg)
-		cmds = append(cmds, cmd)
 	}
 
 	switch m.state {
@@ -96,6 +90,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	m.header, cmd = m.header.Update(msg)
 	cmds = append(cmds, cmd)
+
 	return m, tea.Batch(cmds...)
 }
 
@@ -112,13 +107,11 @@ func (m Model) View() string {
 			BorderForeground(lipgloss.Color("#a6e3a1")).
 			Render(m.command.View())
 	}
-
 	content := lipgloss.NewStyle().
 		Width(m.width - 2).
 		Height(m.height - lipgloss.Height(command) - lipgloss.Height(header) - 2).
 		Border(lipgloss.NormalBorder()).
 		BorderForeground(lipgloss.Color("#74c7ec")).
 		Render(m.content.View())
-
 	return lipgloss.JoinVertical(lipgloss.Top, header, command, content)
 }

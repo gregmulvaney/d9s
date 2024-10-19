@@ -3,15 +3,32 @@ package command
 import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/gregmulvaney/d9s/ui/components/content"
 )
 
+type FocusMsg bool
+
+func Focus() tea.Cmd {
+	return func() tea.Msg {
+		return FocusMsg(true)
+	}
+}
+
+type ClearMsg bool
+
+func Clear() tea.Cmd {
+    return func() tea.Msg {
+        return ClearMsg(true)
+    }
+}
+
 type Model struct {
-	input textinput.Model
+	width, height int
+	input         textinput.Model
 }
 
 func New() Model {
 	input := textinput.New()
-	input.Width = 20
 	return Model{
 		input: input,
 	}
@@ -32,21 +49,31 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			switch m.input.Value() {
 			case "q":
 				return m, tea.Quit
-            case "Networks":
+			default:
+                command := m.input.Value()
+                m.input.SetValue("")
+				return m, content.Command(command)
 			}
-		case "esc":
-			m.input.SetValue("")
-		case ":":
-			m.input.Focus()
 		default:
 			m.input, cmd = m.input.Update(msg)
 			cmds = append(cmds, cmd)
 		}
+	case tea.WindowSizeMsg:
+		m.height = msg.Height
+		m.width = msg.Width
+	case FocusMsg:
+		m.input.Focus()
+    case ClearMsg:
+        m.input.SetValue("`")
 	}
 
-	return m, nil
+	return m, tea.Batch(cmds...)
 }
 
 func (m Model) View() string {
 	return m.input.View()
+}
+
+func (m Model) Focus() {
+	m.input.Focus()
 }

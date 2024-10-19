@@ -17,7 +17,7 @@ var logoRaw = `________    ________
  |    |  \/   __  \ /  ___/
  |    '   \  |__\  \\___ \ 
 /_______  /\_____  /____  >
-        \/       \/     \/ `
+        \/       \/     \/`
 
 type Model struct {
 	width, height int
@@ -63,3 +63,4 @@ func (m Model) View() string {
 	logo := lipgloss.NewStyle().Align(lipgloss.Right).Width(m.width / 3).Foreground(lipgloss.Color("#89b4fa")).Render(logoRaw)
 	return lipgloss.JoinHorizontal(lipgloss.Left, status, keymap, logo)
 }
+

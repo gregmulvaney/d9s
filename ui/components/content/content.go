@@ -8,21 +8,87 @@ import (
 	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	dockerTypes "github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/network"
 	docker "github.com/docker/docker/client"
-	"github.com/gregmulvaney/d9s/ui/components/messages"
 )
 
+type CommandMsg string
+
+func Command(command string) tea.Cmd {
+	return func() tea.Msg {
+		return CommandMsg(command)
+	}
+}
+
 type Model struct {
-	height, width int
-	dockerClient  *docker.Client
-	containers    []dockerTypes.Container
+	width, height int
 	table         table.Model
+	containers    []types.Container
+	dockerClient  *docker.Client
 }
 
 func New(dockerClient *docker.Client) Model {
+
+	t, containers := getContainerTable(dockerClient)
+
+	return Model{
+		dockerClient: dockerClient,
+		containers:   containers,
+		table:        t,
+	}
+}
+
+func (m Model) Init() tea.Cmd { return nil }
+
+func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
+	var cmd tea.Cmd
+	var cmds []tea.Cmd
+
+	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.height = msg.Height
+		m.width = msg.Width
+	case CommandMsg:
+		switch msg {
+		case "Network":
+			m.table = m.getNetworks()
+		}
+	}
+	m.table, cmd = m.table.Update(msg)
+	cmds = append(cmds, cmd)
+
+	return m, tea.Batch(cmds...)
+}
+
+func (m Model) View() string {
+	return m.table.View()
+}
+
+func (m Model) getNetworks() table.Model {
+	networks, _ := m.dockerClient.NetworkList(context.Background(), network.ListOptions{})
+
+	columns := []table.Column{
+		{Title: "NAME", Width: 14},
+	}
+
+	var rows []table.Row
+	for _, ntr := range networks {
+		rows = append(rows, table.Row{ntr.Name})
+	}
+	s := table.DefaultStyles()
+	s.Selected = s.Selected.Foreground(lipgloss.Color("#11111b")).Background(lipgloss.Color("#74c7ec"))
+	t := table.New(
+		table.WithColumns(columns),
+		table.WithRows(rows),
+		table.WithFocused(true),
+	)
+
+	return t
+}
+
+func getContainerTable(dockerClient *docker.Client) (table.Model, []types.Container) {
 	containers, _ := dockerClient.ContainerList(context.Background(), container.ListOptions{})
 
 	columns := []table.Column{
@@ -49,57 +115,5 @@ func New(dockerClient *docker.Client) Model {
 	s.Selected = s.Selected.Foreground(lipgloss.Color("#11111b")).Background(lipgloss.Color("#74c7ec"))
 
 	t.SetStyles(s)
-
-	return Model{
-		dockerClient: dockerClient,
-		containers:   containers,
-		table:        t,
-	}
-}
-
-func (m Model) Init() tea.Cmd {
-	return nil
-}
-
-func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
-	var cmd tea.Cmd
-	var cmds []tea.Cmd
-
-	switch msg := msg.(type) {
-    case messages.CommandMsg:
-        m.getNetworks()
-	case tea.WindowSizeMsg:
-		m.width = msg.Width
-		m.height = msg.Height
-	}
-	m.table, cmd = m.table.Update(msg)
-	cmds = append(cmds, cmd)
-
-	return m, tea.Batch(cmds...)
-}
-
-func (m Model) View() string {
-	return m.table.View()
-}
-
-func (m Model) getNetworks() {
-	networks, _ := m.dockerClient.NetworkList(context.Background(), network.ListOptions{})
-
-	columns := []table.Column{
-		{Title: "NAME", Width: 14},
-	}
-
-	var rows []table.Row
-	for _, ntr := range networks {
-		rows = append(rows, table.Row{ntr.Name})
-	}
-	s := table.DefaultStyles()
-	s.Selected = s.Selected.Foreground(lipgloss.Color("#11111b")).Background(lipgloss.Color("#74c7ec"))
-
-	m.table.SetStyles(s)
-	m.table = table.New(
-		table.WithColumns(columns),
-		table.WithRows(rows),
-		table.WithFocused(true),
-	)
+	return t, containers
 }
