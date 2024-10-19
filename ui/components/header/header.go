@@ -12,12 +12,13 @@ import (
 
 var keyStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#f9e2af")).Width(7)
 
-var logoRaw = `________    ________       
-\______ \  /  _____/ ______
- |    |  \/   __  \ /  ___/
- |    '   \  |__\  \\___ \ 
-/_______  /\_____  /____  >
-        \/       \/     \/`
+var logoRaw =`________  ________       
+ \______ \/   __   \______
+  |    |  \____    /  ___/
+  |    '   \ /    /\___ \ 
+ /_______  //____//____  >
+         \/            \//
+    `
 
 type Model struct {
 	width, height int
@@ -60,7 +61,7 @@ func (m Model) View() string {
 	statusFields += fmt.Sprintf("%s %s\n", keyStyle.Render("Client:"), m.statusField["client"])
 	status := lipgloss.NewStyle().Align(lipgloss.Left).Width(m.width / 3).Render(statusFields)
 	keymap := lipgloss.NewStyle().Align(lipgloss.Center).Width(m.width / 3).Render("Keymap")
-	logo := lipgloss.NewStyle().Align(lipgloss.Right).Width(m.width / 3).Foreground(lipgloss.Color("#89b4fa")).Render(logoRaw)
+	logo := lipgloss.NewStyle().Align(lipgloss.Right).Width(m.width / 3).Foreground(lipgloss.Color("#f9e2af")).Render(logoRaw)
 	return lipgloss.JoinHorizontal(lipgloss.Left, status, keymap, logo)
 }
 

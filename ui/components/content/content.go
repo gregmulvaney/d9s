@@ -52,8 +52,10 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		m.width = msg.Width
 	case CommandMsg:
 		switch msg {
-		case "Network":
+		case "networks","Networks":
 			m.table = m.getNetworks()
+        case "containers","Containers":
+            m.table, _ = getContainerTable(m.dockerClient)
 		}
 	}
 	m.table, cmd = m.table.Update(msg)
@@ -71,11 +73,23 @@ func (m Model) getNetworks() table.Model {
 
 	columns := []table.Column{
 		{Title: "NAME", Width: 14},
+		{Title: "DRIVER", Width: 14},
+		{Title: "IPv4 Subnet", Width: 20},
+		{Title: "IPv4 Gateway", Width: 21},
 	}
 
 	var rows []table.Row
 	for _, ntr := range networks {
-		rows = append(rows, table.Row{ntr.Name})
+		var subnet string
+		var gateway string
+		if len(ntr.IPAM.Config) > 0 {
+			subnet = ntr.IPAM.Config[0].Subnet
+			gateway = ntr.IPAM.Config[0].Gateway
+		} else {
+            subnet = "-"
+            gateway = "-"
+        }
+		rows = append(rows, table.Row{ntr.Name, ntr.Driver, subnet, gateway})
 	}
 	s := table.DefaultStyles()
 	s.Selected = s.Selected.Foreground(lipgloss.Color("#11111b")).Background(lipgloss.Color("#74c7ec"))
@@ -84,7 +98,7 @@ func (m Model) getNetworks() table.Model {
 		table.WithRows(rows),
 		table.WithFocused(true),
 	)
-
+	t.SetStyles(s)
 	return t
 }
 

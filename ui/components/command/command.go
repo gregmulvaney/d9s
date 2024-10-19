@@ -6,6 +6,11 @@ import (
 	"github.com/gregmulvaney/d9s/ui/components/content"
 )
 
+var Commands = []string{
+    "Networks",
+    "Containers",
+}
+
 type FocusMsg bool
 
 func Focus() tea.Cmd {
@@ -17,9 +22,9 @@ func Focus() tea.Cmd {
 type ClearMsg bool
 
 func Clear() tea.Cmd {
-    return func() tea.Msg {
-        return ClearMsg(true)
-    }
+	return func() tea.Msg {
+		return ClearMsg(true)
+	}
 }
 
 type Model struct {
@@ -28,7 +33,10 @@ type Model struct {
 }
 
 func New() Model {
+    
 	input := textinput.New()
+    input.ShowSuggestions = true
+    input.SetSuggestions(Commands)
 	return Model{
 		input: input,
 	}
@@ -50,8 +58,8 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			case "q":
 				return m, tea.Quit
 			default:
-                command := m.input.Value()
-                m.input.SetValue("")
+				command := m.input.Value()
+				m.input.SetValue("")
 				return m, content.Command(command)
 			}
 		default:
@@ -63,8 +71,8 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		m.width = msg.Width
 	case FocusMsg:
 		m.input.Focus()
-    case ClearMsg:
-        m.input.SetValue("`")
+	case ClearMsg:
+		m.input.SetValue("`")
 	}
 
 	return m, tea.Batch(cmds...)

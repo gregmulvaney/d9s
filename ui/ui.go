@@ -60,11 +60,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.showCommandView = true
 				return m, command.Focus()
 			}
-        case "esc":
-            if m.showCommandView {
-                m.state = contentView
-                m.showCommandView = false
-            }
+		case "esc":
+			if m.showCommandView {
+				m.state = contentView
+				m.showCommandView = false
+			}
 		}
 	// Pass command to content
 	case content.CommandMsg:
