@@ -6,8 +6,8 @@ import (
 )
 
 func main() {
-    program := tea.NewProgram(ui.New(), tea.WithAltScreen())
-    if _, err := program.Run(); err != nil {
-        panic(err)
-    }
+	program := tea.NewProgram(ui.New(), tea.WithAltScreen())
+	if _, err := program.Run(); err != nil {
+		panic(err)
+	}
 }

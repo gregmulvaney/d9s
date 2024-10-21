@@ -19,7 +19,6 @@ const (
 type Model struct {
 	state           sessionState
 	width, height   int
-	dockerClient    *docker.Client
 	showCommandView bool
 	header          header.Model
 	command         command.Model
@@ -34,7 +33,6 @@ func New() Model {
 
 	return Model{
 		state:           contentView,
-		dockerClient:    dockerClient,
 		showCommandView: false,
 		header:          header.New(dockerClient),
 		command:         command.New(),
@@ -42,38 +40,44 @@ func New() Model {
 	}
 }
 
-func (m Model) Init() tea.Cmd { return nil }
+func (m Model) Init() tea.Cmd {
+	return nil
+}
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	var cmds []tea.Cmd
 
 	switch msg := msg.(type) {
-	// Handle key messages
 	case tea.KeyMsg:
 		switch msg.String() {
 		case tea.KeyCtrlC.String():
 			return m, tea.Quit
+        case tea.KeyEsc.String():
+           if m.showCommandView && m.state == commandView {
+                // Pass ESC to command model to clear input
+                m.command, _ = m.command.Update(msg)
+                // Hide command view 
+                m.showCommandView = false
+                // Swap focus back to content view
+                m.state = contentView
+            } 
 		case ":":
 			if !m.showCommandView {
-				m.state = commandView
+                // Show command view
 				m.showCommandView = true
-				return m, command.Focus()
-			}
-		case "esc":
-			if m.showCommandView {
-				m.state = contentView
-				m.showCommandView = false
+                // Focus command model
+				m.state = commandView
+                // Focus input model inside command model
+				return m, command.Focused()
 			}
 		}
-	// Pass command to content
+
+    // Route command msg to content model
 	case content.CommandMsg:
-		m.state = contentView
-		m.showCommandView = false
 		m.content, cmd = m.content.Update(msg)
 		cmds = append(cmds, cmd)
-		return m, command.Clear()
-	// Handle window size messages
+
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
@@ -96,7 +100,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) View() string {
 	header := lipgloss.NewStyle().Width(m.width).Height(7).Render(m.header.View())
-
 	var command string
 	if m.showCommandView {
 		command = lipgloss.NewStyle().

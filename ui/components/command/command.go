@@ -7,23 +7,16 @@ import (
 )
 
 var Commands = []string{
-    "Networks",
-    "Containers",
+	"networks",
+	"containers",
+	"volumes",
 }
 
-type FocusMsg bool
+type FocusedMsg bool
 
-func Focus() tea.Cmd {
+func Focused() tea.Cmd {
 	return func() tea.Msg {
-		return FocusMsg(true)
-	}
-}
-
-type ClearMsg bool
-
-func Clear() tea.Cmd {
-	return func() tea.Msg {
-		return ClearMsg(true)
+		return FocusedMsg(true)
 	}
 }
 
@@ -33,17 +26,16 @@ type Model struct {
 }
 
 func New() Model {
-    
 	input := textinput.New()
-    input.ShowSuggestions = true
-    input.SetSuggestions(Commands)
+	input.ShowSuggestions = true
+	input.SetSuggestions(Commands)
 	return Model{
 		input: input,
 	}
 }
 
 func (m Model) Init() tea.Cmd {
-	return textinput.Blink
+    return nil
 }
 
 func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
@@ -53,26 +45,27 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
-		case "enter":
-			switch m.input.Value() {
-			case "q":
-				return m, tea.Quit
-			default:
-				command := m.input.Value()
-				m.input.SetValue("")
-				return m, content.Command(command)
-			}
+        case tea.KeyEsc.String():
+            m.input.SetValue("")
+		case tea.KeyEnter.String():
+            // TODO: Validate command
+            command := m.input.Value()
+            if command == "q" {
+                return m, tea.Quit
+            }
+            m.input.SetValue("")
+            return m, content.Command(command)
 		default:
 			m.input, cmd = m.input.Update(msg)
 			cmds = append(cmds, cmd)
 		}
-	case tea.WindowSizeMsg:
-		m.height = msg.Height
-		m.width = msg.Width
-	case FocusMsg:
+
+	case FocusedMsg:
 		m.input.Focus()
-	case ClearMsg:
-		m.input.SetValue("`")
+
+	case tea.WindowSizeMsg:
+		m.width = msg.Width
+		m.height = msg.Height
 	}
 
 	return m, tea.Batch(cmds...)
@@ -80,8 +73,4 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 
 func (m Model) View() string {
 	return m.input.View()
-}
-
-func (m Model) Focus() {
-	m.input.Focus()
 }

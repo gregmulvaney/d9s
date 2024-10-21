@@ -1,18 +1,15 @@
 package content
 
 import (
-	"context"
-	"strconv"
-	"strings"
-
-	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
-	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/network"
 	docker "github.com/docker/docker/client"
+	"github.com/gregmulvaney/d9s/ui/tables/containers"
+	"github.com/gregmulvaney/d9s/ui/tables/networks"
 )
+
+type sessionState int
+
+// Messages
 
 type CommandMsg string
 
@@ -22,112 +19,62 @@ func Command(command string) tea.Cmd {
 	}
 }
 
+const (
+	containerView sessionState = iota
+	networkView
+	volumeView
+)
+
 type Model struct {
-	width, height int
-	table         table.Model
-	containers    []types.Container
-	dockerClient  *docker.Client
+	state      sessionState
+	containers containers.Model
+	networks   networks.Model
 }
 
 func New(dockerClient *docker.Client) Model {
-
-	t, containers := getContainerTable(dockerClient)
-
 	return Model{
-		dockerClient: dockerClient,
-		containers:   containers,
-		table:        t,
+		state:      containerView,
+		containers: containers.New(dockerClient),
+		networks:   networks.New(dockerClient),
 	}
 }
 
-func (m Model) Init() tea.Cmd { return nil }
+func (m Model) Init() tea.Cmd {
+	return nil
+}
 
 func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	var cmd tea.Cmd
 	var cmds []tea.Cmd
 
 	switch msg := msg.(type) {
-	case tea.WindowSizeMsg:
-		m.height = msg.Height
-		m.width = msg.Width
 	case CommandMsg:
 		switch msg {
-		case "networks","Networks":
-			m.table = m.getNetworks()
-        case "containers","Containers":
-            m.table, _ = getContainerTable(m.dockerClient)
+		case "Containers", "containers":
+			m.state = containerView
+		case "Networks", "networks":
+			m.state = networkView
 		}
 	}
-	m.table, cmd = m.table.Update(msg)
-	cmds = append(cmds, cmd)
+
+	switch m.state {
+	case containerView:
+		m.containers, cmd = m.containers.Update(msg)
+		cmds = append(cmds, cmd)
+	case networkView:
+		m.networks, cmd = m.networks.Update(msg)
+		cmds = append(cmds, cmd)
+	}
 
 	return m, tea.Batch(cmds...)
 }
 
 func (m Model) View() string {
-	return m.table.View()
-}
-
-func (m Model) getNetworks() table.Model {
-	networks, _ := m.dockerClient.NetworkList(context.Background(), network.ListOptions{})
-
-	columns := []table.Column{
-		{Title: "NAME", Width: 14},
-		{Title: "DRIVER", Width: 14},
-		{Title: "IPv4 Subnet", Width: 20},
-		{Title: "IPv4 Gateway", Width: 21},
+	switch m.state {
+	case containerView:
+		return m.containers.View()
+	case networkView:
+		return m.networks.View()
 	}
-
-	var rows []table.Row
-	for _, ntr := range networks {
-		var subnet string
-		var gateway string
-		if len(ntr.IPAM.Config) > 0 {
-			subnet = ntr.IPAM.Config[0].Subnet
-			gateway = ntr.IPAM.Config[0].Gateway
-		} else {
-            subnet = "-"
-            gateway = "-"
-        }
-		rows = append(rows, table.Row{ntr.Name, ntr.Driver, subnet, gateway})
-	}
-	s := table.DefaultStyles()
-	s.Selected = s.Selected.Foreground(lipgloss.Color("#11111b")).Background(lipgloss.Color("#74c7ec"))
-	t := table.New(
-		table.WithColumns(columns),
-		table.WithRows(rows),
-		table.WithFocused(true),
-	)
-	t.SetStyles(s)
-	return t
-}
-
-func getContainerTable(dockerClient *docker.Client) (table.Model, []types.Container) {
-	containers, _ := dockerClient.ContainerList(context.Background(), container.ListOptions{})
-
-	columns := []table.Column{
-		{Title: "#", Width: 4},
-		{Title: "NAME", Width: 15},
-		{Title: "STATE", Width: 20},
-		{Title: "STATUS", Width: 20},
-		{Title: "IMAGE", Width: 50},
-	}
-
-	var rows []table.Row
-	for index, ctr := range containers {
-		i := strconv.Itoa(index)
-		rows = append(rows, table.Row{i, strings.Trim(ctr.Names[0], "/"), ctr.State, ctr.Status, ctr.Image})
-	}
-
-	t := table.New(
-		table.WithColumns(columns),
-		table.WithRows(rows),
-		table.WithFocused(true),
-	)
-
-	s := table.DefaultStyles()
-	s.Selected = s.Selected.Foreground(lipgloss.Color("#11111b")).Background(lipgloss.Color("#74c7ec"))
-
-	t.SetStyles(s)
-	return t, containers
+	return "content"
 }
