@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/bubbles/table"
+	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/docker/docker/api/types/container"
@@ -27,6 +28,7 @@ type Model struct {
 	state          sessionState
 	containersMaps []map[string]interface{}
 	table          table.Model
+	viewport       viewport.Model
 	dockerClient   *docker.Client
 	logs           string
 }
@@ -65,10 +67,13 @@ func New(dockerClient *docker.Client) Model {
 	s.Selected = s.Selected.Foreground(lipgloss.Color("#11111b")).Background(lipgloss.Color("#74c7ec"))
 	t.SetStyles(s)
 
+	vp := viewport.New(60, 20)
+
 	return Model{
 		state:          containerOverview,
 		containersMaps: containersMaps,
 		table:          t,
+		viewport:       vp,
 		dockerClient:   dockerClient,
 	}
 }
@@ -84,11 +89,11 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
-        case "esc":
-            m.logs = ""
-            m.state = containerOverview
+		case "esc":
+			m.logs = ""
+			m.state = containerOverview
 		case "L":
-            m.state = containerLogs
+			m.state = containerLogs
 			name := m.table.SelectedRow()[1]
 			i := slices.IndexFunc(m.containersMaps, func(ctr map[string]interface{}) bool {
 				return ctr["Name"] == name
@@ -100,10 +105,18 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
+        m.viewport.Width = msg.Width - 12
+
 	}
 
-	m.table, cmd = m.table.Update(msg)
-	cmds = append(cmds, cmd)
+	switch m.state {
+	case containerLogs:
+		m.viewport, cmd = m.viewport.Update(msg)
+		cmds = append(cmds, cmd)
+	default:
+		m.table, cmd = m.table.Update(msg)
+		cmds = append(cmds, cmd)
+	}
 
 	return m, tea.Batch(cmds...)
 }
@@ -111,8 +124,8 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 func (m Model) View() string {
 	switch m.state {
 	case containerLogs:
-		return m.logs
-	default:
+		return lipgloss.NewStyle().Width(m.width-10).PaddingLeft(1).PaddingRight(1).Render(m.viewport.View())
+    default:
 		return m.table.View()
 	}
 }
@@ -120,12 +133,13 @@ func (m Model) View() string {
 func (m *Model) getContainerLogs(containerID string) {
 
 	reader, err := m.dockerClient.ContainerLogs(context.Background(), containerID, container.LogsOptions{
-        ShowStdout: true,
-    })
+		ShowStdout: true,
+	})
 	if err != nil {
 		log.Fatal(err)
 	}
-    buf := new(strings.Builder)
-    _, err = io.Copy(buf, reader)
-    m.logs = buf.String()
+	buf := new(strings.Builder)
+	_, err = io.Copy(buf, reader)
+	m.logs = buf.String()
+	m.viewport.SetContent(m.logs)
 }
