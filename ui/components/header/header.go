@@ -62,10 +62,11 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 func (m Model) View() string {
 	var statusFields string
 	statusFields += fmt.Sprintf("%s %s\n", keyStyle.Render("Host:"), m.statusField["host"])
-	statusFields += fmt.Sprintf("%s %s\n", keyStyle.Render("Engine:"), m.statusField["engine"])
-	statusFields += fmt.Sprintf("%s %s\n", keyStyle.Render("Client:"), m.statusField["client"])
+	statusFields += fmt.Sprintf("%s v%s\n", keyStyle.Render("Engine:"), m.statusField["engine"])
+	statusFields += fmt.Sprintf("%s v%s\n", keyStyle.Render("Client:"), m.statusField["client"])
 	status := lipgloss.NewStyle().Align(lipgloss.Left).Width(m.width / 3).Render(statusFields)
 	keymap := lipgloss.NewStyle().Align(lipgloss.Center).Width(m.width / 3).Render(m.keymap.View())
 	logo := lipgloss.NewStyle().Align(lipgloss.Right).Width(m.width / 3).Foreground(lipgloss.Color("#f9e2af")).Render(logoRaw)
 	return lipgloss.JoinHorizontal(lipgloss.Left, status, keymap, logo)
 }
+

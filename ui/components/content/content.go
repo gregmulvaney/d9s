@@ -4,39 +4,27 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	docker "github.com/docker/docker/client"
 	"github.com/gregmulvaney/d9s/ui/tables/containers"
-	"github.com/gregmulvaney/d9s/ui/tables/networks"
 )
 
 type sessionState int
 
-// Messages
-
-type CommandMsg string
-
-func Command(command string) tea.Cmd {
-	return func() tea.Msg {
-		return CommandMsg(command)
-	}
-}
-
 const (
-	containerView sessionState = iota
-	networkView
-	volumeView
+	containersView sessionState = iota
+	networksView
+	volumesView
 )
 
 type Model struct {
-	state      sessionState
-	containers containers.Model
-	networks   networks.Model
+	width, height   int
+	state           sessionState
+	ContainerHeight int
+	containers      containers.Model
 }
 
-func New(dockerClient *docker.Client) Model {
-	return Model{
-		state:      containerView,
-		containers: containers.New(dockerClient),
-		networks:   networks.New(dockerClient),
-	}
+func New(dockerClient *docker.Client) (m Model) {
+	m.state = containersView
+	m.containers = containers.New(dockerClient)
+	return m
 }
 
 func (m Model) Init() tea.Cmd {
@@ -48,21 +36,14 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	var cmds []tea.Cmd
 
 	switch msg := msg.(type) {
-	case CommandMsg:
-		switch msg {
-		case "Containers", "containers":
-			m.state = containerView
-		case "Networks", "networks":
-			m.state = networkView
-		}
+	case tea.WindowSizeMsg:
+		m.width = msg.Width
+		m.height = msg.Height
 	}
 
 	switch m.state {
-	case containerView:
+	default:
 		m.containers, cmd = m.containers.Update(msg)
-		cmds = append(cmds, cmd)
-	case networkView:
-		m.networks, cmd = m.networks.Update(msg)
 		cmds = append(cmds, cmd)
 	}
 
@@ -70,11 +51,6 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 }
 
 func (m Model) View() string {
-	switch m.state {
-	case containerView:
-		return m.containers.View()
-	case networkView:
-		return m.networks.View()
-	}
-	return "content"
+	m.containers.SetHeight(m.ContainerHeight)
+	return m.containers.View()
 }

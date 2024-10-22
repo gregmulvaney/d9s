@@ -25,19 +25,18 @@ type Model struct {
 	content         content.Model
 }
 
-func New() Model {
+func New() (m Model) {
 	dockerClient, err := docker.NewClientWithOpts(docker.FromEnv)
 	if err != nil {
 		panic(err)
 	}
 
-	return Model{
-		state:           contentView,
-		showCommandView: false,
-		header:          header.New(dockerClient),
-		command:         command.New(),
-		content:         content.New(dockerClient),
-	}
+	m.state = contentView
+	m.header = header.New(dockerClient)
+	m.command = command.New()
+	m.content = content.New(dockerClient)
+
+	return m
 }
 
 func (m Model) Init() tea.Cmd {
@@ -49,32 +48,29 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 
 	switch msg := msg.(type) {
+
 	case tea.KeyMsg:
 		switch msg.String() {
 		case tea.KeyCtrlC.String():
 			return m, tea.Quit
-        case tea.KeyEsc.String():
-           if m.showCommandView && m.state == commandView {
-                // Pass ESC to command model to clear input
-                m.command, _ = m.command.Update(msg)
-                // Hide command view 
-                m.showCommandView = false
-                // Swap focus back to content view
-                m.state = contentView
-            } 
 		case ":":
 			if !m.showCommandView {
-                // Show command view
 				m.showCommandView = true
-                // Focus command model
+				m.command.Focus()
 				m.state = commandView
-                // Focus input model inside command model
-				return m, command.Focused()
+			}
+		case tea.KeyEsc.String():
+			if m.showCommandView {
+				m.showCommandView = false
+				m.command.Clear()
+				m.state = contentView
 			}
 		}
 
-    // Route command msg to content model
-	case content.CommandMsg:
+	case command.CommandMsg:
+		m.showCommandView = false
+		m.state = contentView
+		// FIX: Redundant?
 		m.content, cmd = m.content.Update(msg)
 		cmds = append(cmds, cmd)
 
@@ -100,6 +96,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) View() string {
 	header := lipgloss.NewStyle().Width(m.width).Height(7).Render(m.header.View())
+
 	var command string
 	if m.showCommandView {
 		command = lipgloss.NewStyle().
@@ -110,11 +107,15 @@ func (m Model) View() string {
 			BorderForeground(lipgloss.Color("#a6e3a1")).
 			Render(m.command.View())
 	}
+
+	m.content.ContainerHeight = m.height - lipgloss.Height(command) - lipgloss.Height(header) - 2
+
 	content := lipgloss.NewStyle().
 		Width(m.width - 2).
 		Height(m.height - lipgloss.Height(command) - lipgloss.Height(header) - 2).
 		Border(lipgloss.NormalBorder()).
 		BorderForeground(lipgloss.Color("#74c7ec")).
 		Render(m.content.View())
+
 	return lipgloss.JoinVertical(lipgloss.Top, header, command, content)
 }

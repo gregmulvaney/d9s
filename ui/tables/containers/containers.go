@@ -3,15 +3,13 @@ package containers
 import (
 	"context"
 	"io"
-	"log"
-	"slices"
 	"strconv"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/table"
-	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	docker "github.com/docker/docker/client"
 )
@@ -19,24 +17,22 @@ import (
 type sessionState int
 
 const (
-	containerOverview sessionState = iota
-	containerLogs
+	containersView sessionState = iota
+	containerLogsView
 )
 
 type Model struct {
-	width, height  int
-	state          sessionState
-	containersMaps []map[string]interface{}
-	table          table.Model
-	viewport       viewport.Model
-	dockerClient   *docker.Client
-	logs           string
+	width, height   int
+	state           sessionState
+	ContainerHeight int
+	containers      []types.Container
+	table           table.Model
+	dockerClient    *docker.Client
+	logData         string
 }
 
-func New(dockerClient *docker.Client) Model {
+func New(dockerClient *docker.Client) (m Model) {
 	containers, _ := dockerClient.ContainerList(context.Background(), container.ListOptions{})
-
-	containersMaps := make([]map[string]interface{}, 1, len(containers))
 
 	columns := []table.Column{
 		{Title: "#", Width: 4},
@@ -48,11 +44,6 @@ func New(dockerClient *docker.Client) Model {
 
 	var rows []table.Row
 	for index, ctr := range containers {
-		ctrMap := map[string]interface{}{
-			"Name": strings.Trim(ctr.Names[0], "/"),
-			"ID":   ctr.ID,
-		}
-		containersMaps = append(containersMaps, ctrMap)
 		i := strconv.Itoa(index)
 		rows = append(rows, table.Row{i, strings.Trim(ctr.Names[0], "/"), ctr.State, ctr.Status, ctr.Image})
 	}
@@ -67,15 +58,10 @@ func New(dockerClient *docker.Client) Model {
 	s.Selected = s.Selected.Foreground(lipgloss.Color("#11111b")).Background(lipgloss.Color("#74c7ec"))
 	t.SetStyles(s)
 
-	vp := viewport.New(60, 20)
-
-	return Model{
-		state:          containerOverview,
-		containersMaps: containersMaps,
-		table:          t,
-		viewport:       vp,
-		dockerClient:   dockerClient,
-	}
+	m.table = t
+	m.dockerClient = dockerClient
+	m.containers = containers
+	return m
 }
 
 func (m Model) Init() tea.Cmd {
@@ -87,32 +73,23 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	var cmds []tea.Cmd
 
 	switch msg := msg.(type) {
+
 	case tea.KeyMsg:
 		switch msg.String() {
-		case "esc":
-			m.logs = ""
-			m.state = containerOverview
-		case "L":
-			m.state = containerLogs
-			name := m.table.SelectedRow()[1]
-			i := slices.IndexFunc(m.containersMaps, func(ctr map[string]interface{}) bool {
-				return ctr["Name"] == name
-			})
-			ctr := m.containersMaps[i]
-			m.getContainerLogs(ctr["ID"].(string))
-
+		case "l":
+			index := m.table.SelectedRow()[0]
+            m.state = containerLogsView
+			m.logData = m.getContainerLogs(index)
 		}
+
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
-        m.viewport.Width = msg.Width - 12
-
 	}
 
 	switch m.state {
-	case containerLogs:
-		m.viewport, cmd = m.viewport.Update(msg)
-		cmds = append(cmds, cmd)
+	case containerLogsView:
+
 	default:
 		m.table, cmd = m.table.Update(msg)
 		cmds = append(cmds, cmd)
@@ -122,24 +99,25 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 }
 
 func (m Model) View() string {
+	m.table.SetHeight(m.ContainerHeight)
 	switch m.state {
-	case containerLogs:
-		return lipgloss.NewStyle().Width(m.width-10).PaddingLeft(1).PaddingRight(1).Render(m.viewport.View())
-    default:
+	case containerLogsView:
+		return lipgloss.NewStyle().Width(m.width-4).MaxWidth(m.width - 4).Render(m.logData)
+	default:
 		return m.table.View()
 	}
 }
 
-func (m *Model) getContainerLogs(containerID string) {
+func (m *Model) SetHeight(height int) {
+	m.ContainerHeight = height
+}
 
-	reader, err := m.dockerClient.ContainerLogs(context.Background(), containerID, container.LogsOptions{
-		ShowStdout: true,
-	})
-	if err != nil {
-		log.Fatal(err)
-	}
+func (m *Model) getContainerLogs(index string) string {
+	i, _ := strconv.Atoi(index)
+	ctr := m.containers[i]
 	buf := new(strings.Builder)
-	_, err = io.Copy(buf, reader)
-	m.logs = buf.String()
-	m.viewport.SetContent(m.logs)
+	reader, _ := m.dockerClient.ContainerLogs(context.Background(), ctr.ID, container.LogsOptions{ShowStdout: true})
+	defer reader.Close()
+	_, _ = io.Copy(buf, reader)
+	return buf.String()
 }
