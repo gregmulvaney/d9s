@@ -3,7 +3,7 @@ package content
 import (
 	tea "github.com/charmbracelet/bubbletea"
 	docker "github.com/docker/docker/client"
-	"github.com/gregmulvaney/d9s/ui/tables/containers"
+	"github.com/gregmulvaney/d9s/ui/components/containers"
 )
 
 type sessionState int
@@ -15,27 +15,28 @@ const (
 )
 
 type Model struct {
-	width, height   int
-	state           sessionState
-	ContainerHeight int
-	containers      containers.Model
+	width, height int
+	WrapperHeight int
+    WrapperWidth int
+	state         sessionState
+	containers    containers.Model
 }
 
 func New(dockerClient *docker.Client) (m Model) {
+
 	m.state = containersView
 	m.containers = containers.New(dockerClient)
 	return m
 }
 
-func (m Model) Init() tea.Cmd {
-	return nil
-}
+func (m Model) Init() tea.Cmd { return nil }
 
 func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	var cmd tea.Cmd
 	var cmds []tea.Cmd
 
 	switch msg := msg.(type) {
+
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
@@ -51,6 +52,10 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 }
 
 func (m Model) View() string {
-	m.containers.SetHeight(m.ContainerHeight)
-	return m.containers.View()
+	switch m.state {
+	default:
+		m.containers.WrapperHeight = m.WrapperHeight
+        
+		return m.containers.View()
+	}
 }

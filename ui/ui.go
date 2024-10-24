@@ -4,9 +4,9 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	docker "github.com/docker/docker/client"
-	"github.com/gregmulvaney/d9s/ui/components/command"
-	"github.com/gregmulvaney/d9s/ui/components/content"
-	"github.com/gregmulvaney/d9s/ui/components/header"
+	"github.com/gregmulvaney/d9s/ui/views/command"
+	"github.com/gregmulvaney/d9s/ui/views/content"
+	"github.com/gregmulvaney/d9s/ui/views/header"
 )
 
 type sessionState int
@@ -17,8 +17,8 @@ const (
 )
 
 type Model struct {
-	state           sessionState
 	width, height   int
+	state           sessionState
 	showCommandView bool
 	header          header.Model
 	command         command.Model
@@ -32,6 +32,7 @@ func New() (m Model) {
 	}
 
 	m.state = contentView
+	m.showCommandView = false
 	m.header = header.New(dockerClient)
 	m.command = command.New()
 	m.content = content.New(dockerClient)
@@ -51,6 +52,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyMsg:
 		switch msg.String() {
+		// Quit key combo
 		case tea.KeyCtrlC.String():
 			return m, tea.Quit
 		case ":":
@@ -70,9 +72,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case command.CommandMsg:
 		m.showCommandView = false
 		m.state = contentView
-		// FIX: Redundant?
-		m.content, cmd = m.content.Update(msg)
-		cmds = append(cmds, cmd)
 
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
@@ -95,8 +94,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) View() string {
-	header := lipgloss.NewStyle().Width(m.width).Height(7).Render(m.header.View())
-
+	header := lipgloss.NewStyle().MaxHeight(7).Height(7).Render(m.header.View())
 	var command string
 	if m.showCommandView {
 		command = lipgloss.NewStyle().
@@ -104,18 +102,16 @@ func (m Model) View() string {
 			PaddingLeft(2).
 			PaddingRight(2).
 			Border(lipgloss.NormalBorder()).
-			BorderForeground(lipgloss.Color("#a6e3a1")).
+			BorderForeground(lipgloss.Color("2")).
 			Render(m.command.View())
 	}
 
-	m.content.ContainerHeight = m.height - lipgloss.Height(command) - lipgloss.Height(header) - 2
+	contentHeight := m.height - lipgloss.Height(header) - lipgloss.Height(command) - 2
 
-	content := lipgloss.NewStyle().
-		Width(m.width - 2).
-		Height(m.height - lipgloss.Height(command) - lipgloss.Height(header) - 2).
-		Border(lipgloss.NormalBorder()).
-		BorderForeground(lipgloss.Color("#74c7ec")).
-		Render(m.content.View())
+	m.content.WrapperHeight = contentHeight
+	m.content.WrapperWidth = m.width - 2
+
+	content := lipgloss.NewStyle().Height(contentHeight).Width(m.width).Render(m.content.View())
 
 	return lipgloss.JoinVertical(lipgloss.Top, header, command, content)
 }
