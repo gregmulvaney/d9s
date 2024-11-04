@@ -4,6 +4,7 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/gregmulvaney/d9s/pkg/tui/constants"
 	"github.com/gregmulvaney/d9s/pkg/tui/context"
 )
 
@@ -17,6 +18,9 @@ type Model struct {
 func New(ctx context.ProgramContext) (m Model) {
 	m.ctx = &ctx
 	m.input = textinput.New()
+	m.input.ShowSuggestions = true
+	m.input.SetSuggestions(constants.Commands)
+
 	return m
 }
 
