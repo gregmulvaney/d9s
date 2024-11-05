@@ -4,6 +4,7 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	docker "github.com/docker/docker/client"
 	"github.com/gregmulvaney/d9s/pkg/tui/components/command"
 	"github.com/gregmulvaney/d9s/pkg/tui/components/content"
 	"github.com/gregmulvaney/d9s/pkg/tui/components/header"
@@ -27,7 +28,14 @@ type Model struct {
 }
 
 func New() (m Model) {
-	m.ctx = context.ProgramContext{}
+	client, err := docker.NewClientWithOpts(docker.FromEnv)
+	if err != nil {
+		panic(err)
+	}
+
+	m.ctx = context.ProgramContext{
+		DockerClient: client,
+	}
 	m.state = contentMode
 	m.header = header.New(m.ctx)
 	m.command = command.New(m.ctx)
@@ -63,6 +71,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, tea.WindowSize()
 			}
 		}
+
+	case command.CommandMsg:
+		m.content, cmd = m.content.Update(msg)
+		cmds = append(cmds, cmd)
+		m.state = contentMode
+		m.ctx.ShowCommandView = false
+		return m, tea.WindowSize()
+
 	case tea.WindowSizeMsg:
 		m.onWindowSizeChanged(msg)
 	}

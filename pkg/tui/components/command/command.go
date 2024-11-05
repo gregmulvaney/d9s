@@ -33,11 +33,12 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		switch msg.String() {
 		case tea.KeyEnter.String():
 			command := m.input.Value()
+			// TODO: Validate commands
 			if command == "q" {
 				return m, tea.Quit
 			}
-			Execute(command)
 			m.Reset()
+			return m, Execute(command)
 		default:
 			m.input, cmd = m.input.Update(msg)
 			cmds = append(cmds, cmd)
