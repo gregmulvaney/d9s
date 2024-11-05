@@ -1,1 +1,10 @@
+# DIRENV files
 .envrc
+
+# Editor configs
+.idea
+.vscode
+
+# macOS junk
+.DS_Store
+
