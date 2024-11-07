@@ -73,11 +73,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 	case command.CommandMsg:
+		m.state = contentMode
 		m.content, cmd = m.content.Update(msg)
 		cmds = append(cmds, cmd)
-		m.state = contentMode
+		cmds = append(cmds, tea.WindowSize())
 		m.ctx.ShowCommandView = false
-		return m, tea.WindowSize()
+		return m, tea.Batch(cmds...)
+
+	case content.KeymapMsg:
+		m.header, cmd = m.header.Update(msg)
+		cmds = append(cmds, cmd)
 
 	case tea.WindowSizeMsg:
 		m.onWindowSizeChanged(msg)
@@ -91,6 +96,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.content, cmd = m.content.Update(msg)
 		cmds = append(cmds, cmd)
 	}
+
+	m.header, cmd = m.header.Update(msg)
+	cmds = append(cmds, cmd)
 
 	m.syncProgramContext()
 

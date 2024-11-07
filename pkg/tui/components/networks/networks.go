@@ -6,9 +6,15 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/docker/docker/api/types/network"
+	"github.com/gregmulvaney/bubbles/keylist"
 	"github.com/gregmulvaney/bubbles/table"
+	"github.com/gregmulvaney/d9s/pkg/tui/constants"
 	"github.com/gregmulvaney/d9s/pkg/tui/context"
 )
+
+var Keymap = constants.Keymap{
+	keylist.Item{Key: "<l>", Value: "logs"},
+}
 
 type Model struct {
 	ctx   *context.ProgramContext

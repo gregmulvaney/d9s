@@ -7,10 +7,19 @@ import (
 	"github.com/gregmulvaney/d9s/pkg/tui/components/containers"
 	"github.com/gregmulvaney/d9s/pkg/tui/components/networks"
 	"github.com/gregmulvaney/d9s/pkg/tui/components/volumes"
+	"github.com/gregmulvaney/d9s/pkg/tui/constants"
 	"github.com/gregmulvaney/d9s/pkg/tui/context"
 )
 
 type sessionState int
+
+type KeymapMsg constants.Keymap
+
+func UpdateKeymap(keymap constants.Keymap) tea.Cmd {
+	return func() tea.Msg {
+		return KeymapMsg(keymap)
+	}
+}
 
 const (
 	containersMode sessionState = iota
@@ -44,14 +53,19 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		switch msg {
 		case "containers":
 			m.state = containersMode
+			return m, UpdateKeymap(containers.Keymap)
 		case "networks":
 			m.state = networksMode
+			return m, UpdateKeymap(networks.Keymap)
 		case "volumes":
 			m.state = volumesMode
 		}
 	}
 
 	switch m.state {
+	case volumesMode:
+		m.volumes, cmd = m.volumes.Update(msg)
+		cmds = append(cmds, cmd)
 	case networksMode:
 		m.networks, cmd = m.networks.Update(msg)
 		cmds = append(cmds, cmd)
@@ -74,6 +88,8 @@ func (m Model) View() string {
 	var content string
 
 	switch m.state {
+	case volumesMode:
+		content = m.volumes.View()
 	case networksMode:
 		content = m.networks.View()
 	default:
