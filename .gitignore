@@ -8,3 +8,6 @@
 # macOS junk
 .DS_Store
 
+# build output 
+bin
+

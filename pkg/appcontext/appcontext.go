@@ -1,10 +1,10 @@
-package context
+package appcontext
 
 import (
 	docker "github.com/docker/docker/client"
 )
 
-type ProgramContext struct {
+type Context struct {
 	ScreenWidth       int
 	ScreenHeight      int
 	MainContentHeight int
