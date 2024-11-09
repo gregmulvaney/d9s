@@ -93,6 +93,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, tea.WindowSize()
 			}
 		}
+	case constants.CommandMsg:
+		m.ctx.ShowCommandView = false
+		m.command.Reset()
+		m.content, cmd = m.content.Update(msg)
+		cmds = append(cmds, cmd, tea.WindowSize())
+		return m, tea.Batch(cmds...)
 
 	case constants.ReadyMsg:
 		m.ready = true
@@ -127,7 +133,13 @@ func (m Model) View() string {
 	header := lipgloss.NewStyle().Height(7).MaxHeight(constants.HEADERHEIGHT).Render(m.header.View())
 	var command string
 	if m.ctx.ShowCommandView {
-		command = lipgloss.NewStyle().Border(lipgloss.NormalBorder()).Width(m.ctx.ScreenWidth).PaddingLeft(1).BorderForeground(lipgloss.Color("2")).Render(m.command.View())
+		command = lipgloss.NewStyle().
+			Border(lipgloss.NormalBorder()).
+			Width(m.ctx.ScreenWidth - 3).
+			MaxWidth(m.ctx.ScreenWidth).
+			PaddingLeft(1).
+			BorderForeground(lipgloss.Color("2")).
+			Render(m.command.View())
 	}
 
 	content := m.content.View()

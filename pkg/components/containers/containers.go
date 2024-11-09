@@ -2,6 +2,8 @@ package containers
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -17,6 +19,13 @@ type Model struct {
 	table table.Model
 }
 
+var Keymap = [][]string{
+	{"<C+r>", "Restart container"},
+	{"<C+k>", "Stop Container"},
+	{"<C+s>", "Start Container"},
+	{"<l>", "Logs"},
+}
+
 func New(ctx *appcontext.Context) (m Model) {
 	m.ctx = ctx
 
@@ -25,8 +34,9 @@ func New(ctx *appcontext.Context) (m Model) {
 		{Title: "#", Width: 5},
 		{Title: "NAME", Width: 20},
 		{Title: "STATE", Width: 12},
-		{Title: "CPU", Width: 6},
-		{Title: "MEM", Width: 6},
+		{Title: "CPU", Width: 10},
+		{Title: "MEM/LIMIT", Width: 20},
+		{Title: "MEM", Width: 10},
 		{Title: "STATUS", Width: 35},
 		{Title: "IMAGE", Flex: true},
 	}
@@ -36,8 +46,16 @@ func New(ctx *appcontext.Context) (m Model) {
 	var rows = make([]table.Row, 0, len(containers))
 	for i, container := range containers {
 		index := strconv.Itoa(i)
+		statsReader, _ := m.ctx.DockerClient.ContainerStatsOneShot(context.Background(), container.ID)
+		defer statsReader.Body.Close()
+		var stats types.Stats
+		json.NewDecoder(statsReader.Body).Decode(&stats)
+		// cpu := strconv.Itoa(int(stats.CPUStats.CPUUsage.TotalUsage))
+		memlimit := fmt.Sprintf("%d/%d", (stats.MemoryStats.Usage/1024)/1024, (stats.MemoryStats.Limit/1024)/1024)
+		memFloat := (float64(stats.MemoryStats.Usage) / float64(stats.MemoryStats.Limit)) * 100
+		mem := fmt.Sprintf("%s%s", strconv.FormatFloat(memFloat, 'f', 2, 64), "%")
 		name := strings.Trim(container.Names[0], "/")
-		row := table.Row{container.ID, index, name, container.State, "00%", "0MB", container.Status, container.Image}
+		row := table.Row{container.ID, index, name, container.State, "0%", memlimit, mem, container.Status, container.Image}
 		rows = append(rows, row)
 	}
 
