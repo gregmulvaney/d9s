@@ -1,11 +1,13 @@
 package constants
 
-import "github.com/gregmulvaney/bubbles/keylist"
+type KeySet struct {
+	Key         string
+	Description string
+}
 
 var Commands = []string{
 	"containers",
 	"networks",
 	"volumes",
+	"secrets",
 }
-
-type Keymap []keylist.Item

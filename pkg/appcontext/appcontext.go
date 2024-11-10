@@ -1,13 +1,19 @@
-package context
+package appcontext
 
 import (
 	docker "github.com/docker/docker/client"
 )
 
-type ProgramContext struct {
+type Context struct {
 	ScreenWidth       int
 	ScreenHeight      int
 	MainContentHeight int
 	ShowCommandView   bool
 	DockerClient      *docker.Client
+	Keymap            []KeyItem
+}
+
+type KeyItem struct {
+	Key   string
+	Value string
 }
