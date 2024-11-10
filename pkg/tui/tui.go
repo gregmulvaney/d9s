@@ -11,6 +11,7 @@ import (
 	"github.com/gregmulvaney/bubbles/breadcrumbs"
 	"github.com/gregmulvaney/d9s/pkg/appcontext"
 	"github.com/gregmulvaney/d9s/pkg/components/command"
+	"github.com/gregmulvaney/d9s/pkg/components/containers"
 	"github.com/gregmulvaney/d9s/pkg/components/content"
 	"github.com/gregmulvaney/d9s/pkg/components/header"
 	"github.com/gregmulvaney/d9s/pkg/components/splash"
@@ -47,6 +48,8 @@ func New() (m Model) {
 		panic(err)
 	}
 	m.ctx.DockerClient = client
+	// Set initial keymap
+	m.ctx.Keymap = containers.Keymap
 
 	m.splash = splash.New(&m.ctx)
 	m.header = header.New(&m.ctx)

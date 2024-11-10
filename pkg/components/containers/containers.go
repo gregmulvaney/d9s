@@ -19,11 +19,11 @@ type Model struct {
 	table table.Model
 }
 
-var Keymap = [][]string{
-	{"<C+r>", "Restart container"},
-	{"<C+k>", "Stop Container"},
-	{"<C+s>", "Start Container"},
-	{"<l>", "Logs"},
+var Keymap = []appcontext.KeyItem{
+	{Key: "<C+r>", Value: "Restart Container"},
+	{Key: "<C+k>", Value: "Stop Container"},
+	{Key: "<C+s>", Value: "Start Container"},
+	{Key: "<l>", Value: "logs"},
 }
 
 func New(ctx *appcontext.Context) (m Model) {

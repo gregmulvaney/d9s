@@ -8,6 +8,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/gregmulvaney/bubbles/keylist"
 	"github.com/gregmulvaney/d9s/pkg/appcontext"
 	"github.com/gregmulvaney/d9s/pkg/constants"
 )
@@ -21,6 +22,7 @@ type statusField struct {
 type Model struct {
 	ctx          *appcontext.Context
 	statusFields []statusField
+	keymap       keylist.Model
 }
 
 func New(ctx *appcontext.Context) (m Model) {
@@ -31,6 +33,17 @@ func New(ctx *appcontext.Context) (m Model) {
 		panic(err)
 	}
 	clientVer := m.ctx.DockerClient.ClientVersion()
+
+	// FIX: This is actual shitcode
+	var items []keylist.Item
+	for _, key := range m.ctx.Keymap {
+		item := keylist.Item{Key: key.Key, Value: key.Value}
+		items = append(items, item)
+	}
+
+	m.keymap = keylist.New(
+		keylist.WithItems(items),
+	)
 
 	m.statusFields = []statusField{
 		{Key: "Host:", Value: host[1]},
@@ -63,8 +76,8 @@ func (m Model) View() string {
 	keymap := lipgloss.NewStyle().
 		Width(m.ctx.ScreenWidth / 3).
 		MaxWidth(m.ctx.ScreenWidth / 3).
-		Align(lipgloss.Center).
-		Render("keymap")
+		Align(lipgloss.Left).
+		Render(m.keymap.View())
 
 	logo := lipgloss.NewStyle().
 		Width(m.ctx.ScreenWidth / 3).

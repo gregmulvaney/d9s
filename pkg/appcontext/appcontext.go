@@ -10,4 +10,10 @@ type Context struct {
 	MainContentHeight int
 	ShowCommandView   bool
 	DockerClient      *docker.Client
+	Keymap            []KeyItem
+}
+
+type KeyItem struct {
+	Key   string
+	Value string
 }
