@@ -3,3 +3,6 @@ run:
 
 build: 
 	go build -o bin/d9s cmd/d9s/main.go
+
+test: 
+	go test ./...
