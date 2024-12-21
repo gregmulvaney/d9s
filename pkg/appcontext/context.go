@@ -1,11 +1,9 @@
 package appcontext
 
-import "github.com/gregmulvaney/d9s/pkg/data"
+import (
+	docker "github.com/docker/docker/client"
+)
 
 type Context struct {
-	Docker data.Docker
-
-	ScreenHeight     int
-	ScreenWidth      int
-	MaxContentHeight int
+	Docker *docker.Client
 }
