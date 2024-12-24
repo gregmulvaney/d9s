@@ -82,9 +82,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, tea.WindowSize()
 			}
 		}
+
 	case tea.WindowSizeMsg:
 		m.height = msg.Height
 		m.width = msg.Width
+
+	case command.CommandMsg:
+		m.showCommand = false
+		m.state = contentMode
+		m.content, cmd = m.content.Update(msg)
+		cmds = append(cmds, cmd)
 	}
 
 	// Switch which view is receiving messages

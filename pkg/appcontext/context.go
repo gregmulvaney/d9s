@@ -5,5 +5,6 @@ import (
 )
 
 type Context struct {
-	Docker *docker.Client
+	Docker        *docker.Client
+	ContentHeight int
 }

@@ -34,6 +34,21 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	var cmds []tea.Cmd
 
 	switch msg := msg.(type) {
+
+	case tea.KeyMsg:
+		switch msg.Type {
+		case tea.KeyEnter:
+			switch m.input.Value() {
+			case "q":
+				return m, tea.Quit
+
+			default:
+				value := m.input.Value()
+				m.Reset()
+				return m, Execute(value)
+			}
+		}
+
 	case tea.WindowSizeMsg:
 		m.height = msg.Height
 		m.width = msg.Width
