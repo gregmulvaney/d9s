@@ -1,21 +1,13 @@
 package tui
 
 import (
-	"time"
-
-	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/docker/docker/client"
 	docker "github.com/docker/docker/client"
-	"github.com/gregmulvaney/bubbles/breadcrumbs"
 	"github.com/gregmulvaney/d9s/pkg/appcontext"
 	"github.com/gregmulvaney/d9s/pkg/components/command"
-	"github.com/gregmulvaney/d9s/pkg/components/containers"
-	"github.com/gregmulvaney/d9s/pkg/components/content"
-	"github.com/gregmulvaney/d9s/pkg/components/header"
-	"github.com/gregmulvaney/d9s/pkg/components/splash"
-	"github.com/gregmulvaney/d9s/pkg/constants"
+	"github.com/gregmulvaney/d9s/pkg/views/content"
+	"github.com/gregmulvaney/d9s/pkg/views/header"
 )
 
 type sessionState int
@@ -27,46 +19,39 @@ const (
 )
 
 type Model struct {
-	ctx   appcontext.Context
-	state sessionState
-	ready bool
+	state       sessionState
+	height      int
+	width       int
+	showCommand bool
+	ctx         appcontext.Context
 
-	splash      splash.Model
-	header      header.Model
-	command     command.Model
-	content     content.Model
-	breadcrumbs breadcrumbs.Model
+	header  header.Model
+	command command.Model
+	content content.Model
 }
 
 func New() (m Model) {
-	m.ctx = appcontext.Context{}
-	m.state = splashMode
-	m.ready = false
-
-	client, err := client.NewClientWithOpts(docker.FromEnv)
+	client, err := docker.NewClientWithOpts(docker.FromEnv)
 	if err != nil {
 		panic(err)
 	}
-	m.ctx.DockerClient = client
-	// Set initial keymap
-	m.ctx.Keymap = containers.Keymap
 
-	m.splash = splash.New(&m.ctx)
+	// Initialize app context struct
+	m.ctx = appcontext.Context{}
+	m.ctx.Docker = client
+
+	// Set initial interaction state
+	m.state = contentMode
+
 	m.header = header.New(&m.ctx)
-	m.command = command.New(&m.ctx)
+	m.command = command.New()
 	m.content = content.New(&m.ctx)
-	crumbs := []string{"<containers>"}
-	m.breadcrumbs = breadcrumbs.New(
-		breadcrumbs.WithCrumbs(crumbs),
-	)
 
 	return m
 }
 
 func (m Model) Init() tea.Cmd {
-	return tea.Tick(time.Second*2, func(t time.Time) tea.Msg {
-		return constants.ReadyMsg(true)
-	})
+	return nil
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -76,45 +61,41 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
+		// Show command prompt
 		case ":":
-			if !m.ctx.ShowCommandView {
-				m.ctx.ShowCommandView = true
-				m.state = commandMode
-				m.command.Focus()
-				cmds = append(cmds, tea.WindowSize(), textinput.Blink)
-				return m, tea.Batch(cmds...)
-			}
+			m.showCommand = true
+			m.command.Focus()
+			m.state = commandMode
+			return m, tea.WindowSize()
 		}
 		switch msg.Type {
+		// Quit app
 		case tea.KeyCtrlC:
 			return m, tea.Quit
+
+		// Hide command prompt and reset input
 		case tea.KeyEsc:
-			if m.ctx.ShowCommandView {
-				m.state = contentMode
-				m.ctx.ShowCommandView = false
+			if m.showCommand {
+				m.showCommand = false
 				m.command.Reset()
+				m.state = contentMode
 				return m, tea.WindowSize()
 			}
 		}
-	case constants.CommandMsg:
-		m.ctx.ShowCommandView = false
-		m.command.Reset()
-		m.content, cmd = m.content.Update(msg)
-		cmds = append(cmds, cmd, tea.WindowSize())
-		return m, tea.Batch(cmds...)
-
-	case constants.ReadyMsg:
-		m.ready = true
-		m.state = contentMode
 
 	case tea.WindowSizeMsg:
-		m.syncWindowSize(msg)
+		m.height = msg.Height
+		m.width = msg.Width
+
+	case command.CommandMsg:
+		m.showCommand = false
+		m.state = contentMode
+		m.content, cmd = m.content.Update(msg)
+		cmds = append(cmds, cmd)
 	}
 
+	// Switch which view is receiving messages
 	switch m.state {
-	case splashMode:
-		m.splash, cmd = m.splash.Update(msg)
-		return m, cmd
 	case commandMode:
 		m.command, cmd = m.command.Update(msg)
 		cmds = append(cmds, cmd)
@@ -123,47 +104,37 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, cmd)
 	}
 
-	m.syncAppContext()
+	m.header, cmd = m.header.Update(msg)
+	cmds = append(cmds, cmd)
 
 	return m, tea.Batch(cmds...)
 }
 
 func (m Model) View() string {
-	if !m.ready {
-		return m.splash.View()
-	}
+	header := lipgloss.NewStyle().
+		Width(m.width).
+		MaxWidth(m.width).
+		Render(m.header.View())
 
-	header := lipgloss.NewStyle().Height(7).MaxHeight(constants.HEADERHEIGHT).Render(m.header.View())
 	var command string
-	if m.ctx.ShowCommandView {
-		command = lipgloss.NewStyle().
+	if m.showCommand {
+		command = lipgloss.
+			NewStyle().
 			Border(lipgloss.NormalBorder()).
-			Width(m.ctx.ScreenWidth - 3).
-			MaxWidth(m.ctx.ScreenWidth).
-			PaddingLeft(1).
 			BorderForeground(lipgloss.Color("2")).
+			Width(m.width - 2).PaddingLeft(1).
 			Render(m.command.View())
 	}
 
-	content := m.content.View()
+	_, headerHeight := lipgloss.Size(header)
+	_, commandHeight := lipgloss.Size(command)
 
-	return lipgloss.JoinVertical(lipgloss.Left, header, command, content, m.breadcrumbs.View())
-}
+	content := lipgloss.NewStyle().
+		Height(m.height - headerHeight - commandHeight - 2).
+		Border(lipgloss.NormalBorder()).
+		BorderForeground(lipgloss.Color("4")).
+		Width(m.width - 2).
+		Render(m.content.View())
 
-func (m *Model) syncWindowSize(msg tea.WindowSizeMsg) {
-	m.ctx.ScreenHeight = msg.Height
-	m.ctx.ScreenWidth = msg.Width
-	if m.ctx.ShowCommandView {
-		m.ctx.MainContentHeight = m.ctx.ScreenHeight - constants.HEADERHEIGHT - constants.COMMANDHEIGHT - constants.CRUMBSHEIGHT
-	} else {
-		m.ctx.MainContentHeight = m.ctx.ScreenHeight - constants.HEADERHEIGHT - constants.CRUMBSHEIGHT
-	}
-
-	m.syncAppContext()
-}
-
-func (m *Model) syncAppContext() {
-	m.splash.SyncAppContext(&m.ctx)
-	m.header.SyncAppContext(&m.ctx)
-	m.content.SyncAppContext(&m.ctx)
+	return lipgloss.JoinVertical(lipgloss.Left, header, command, content)
 }

@@ -4,25 +4,28 @@ import (
 	"github.com/charmbracelet/bubbles/cursor"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/gregmulvaney/d9s/pkg/appcontext"
 	"github.com/gregmulvaney/d9s/pkg/constants"
 )
 
+type CommandMsg string
+
 type Model struct {
-	ctx   *appcontext.Context
-	input textinput.Model
+	height int
+	width  int
+	input  textinput.Model
 }
 
-func New(ctx *appcontext.Context) (m Model) {
-	m.ctx = ctx
+func New() (m Model) {
+	m.height = 0
+	m.width = 0
+
 	m.input = textinput.New()
-	m.input.ShowSuggestions = true
 	m.input.SetSuggestions(constants.Commands)
+	m.input.ShowSuggestions = true
 	return m
 }
 
 func (m Model) Init() tea.Cmd {
-	// TODO: Probably redundant
 	return textinput.Blink
 }
 
@@ -31,17 +34,24 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	var cmds []tea.Cmd
 
 	switch msg := msg.(type) {
+
 	case tea.KeyMsg:
 		switch msg.Type {
 		case tea.KeyEnter:
-			command := m.input.Value()
-			if command == "q" {
+			switch m.input.Value() {
+			case "q":
 				return m, tea.Quit
-			}
-			if validateCommand(command) {
-				return m, Execute(command)
+
+			default:
+				value := m.input.Value()
+				m.Reset()
+				return m, Execute(value)
 			}
 		}
+
+	case tea.WindowSizeMsg:
+		m.height = msg.Height
+		m.width = msg.Width
 	}
 
 	m.input, cmd = m.input.Update(msg)
@@ -55,6 +65,10 @@ func (m *Model) Focus() {
 	m.input.Cursor.SetMode(cursor.CursorBlink)
 }
 
+func (m *Model) Blur() {
+	m.input.Blur()
+}
+
 func (m *Model) Reset() {
 	m.input.Reset()
 }
@@ -63,17 +77,8 @@ func (m Model) View() string {
 	return m.input.View()
 }
 
-func validateCommand(command string) bool {
-	for _, value := range constants.Commands {
-		if value == command {
-			return true
-		}
-	}
-	return false
-}
-
 func Execute(command string) tea.Cmd {
 	return func() tea.Msg {
-		return constants.CommandMsg(command)
+		return CommandMsg(command)
 	}
 }
