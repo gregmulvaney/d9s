@@ -5,6 +5,7 @@ import (
 	"github.com/gregmulvaney/d9s/pkg/appcontext"
 	"github.com/gregmulvaney/d9s/pkg/components/command"
 	"github.com/gregmulvaney/d9s/pkg/views/containers"
+	"github.com/gregmulvaney/d9s/pkg/views/images"
 	"github.com/gregmulvaney/d9s/pkg/views/networks"
 )
 
@@ -13,11 +14,13 @@ type sessionState int
 const (
 	containersMode sessionState = iota
 	networksMode
+	imagesMode
 )
 
 var commands = map[command.CommandMsg]sessionState{
 	"containers": containersMode,
 	"networks":   networksMode,
+	"images":     imagesMode,
 }
 
 type Model struct {
@@ -25,6 +28,7 @@ type Model struct {
 	state      sessionState
 	containers containers.Model
 	networks   networks.Model
+	images     images.Model
 }
 
 func New(ctx *appcontext.Context) (m Model) {
@@ -32,6 +36,8 @@ func New(ctx *appcontext.Context) (m Model) {
 
 	m.containers = containers.New(ctx)
 	m.networks = networks.New(ctx)
+	m.images = images.New(ctx)
+
 	return m
 }
 
@@ -46,6 +52,9 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	}
 
 	switch m.state {
+	case imagesMode:
+		m.images, cmd = m.images.Update(msg)
+		cmds = append(cmds, cmd)
 	case networksMode:
 		m.networks, cmd = m.networks.Update(msg)
 		cmds = append(cmds, cmd)
@@ -58,6 +67,8 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 
 func (m Model) View() string {
 	switch m.state {
+	case imagesMode:
+		return m.images.View()
 	case networksMode:
 		return m.networks.View()
 	default:
