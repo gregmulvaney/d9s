@@ -8,6 +8,7 @@ import (
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/api/types/network"
+	"github.com/docker/docker/api/types/volume"
 	docker "github.com/docker/docker/client"
 )
 
@@ -89,4 +90,13 @@ func (a Api) NetworksFetch() ([]network.Summary, error) {
 		return nil, err
 	}
 	return networks, nil
+}
+
+func (a Api) VolumesFetch() ([]*volume.Volume, error) {
+	volumeResponse, err := a.Client.VolumeList(context.Background(), volume.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	volumes := volumeResponse.Volumes
+	return volumes, nil
 }
