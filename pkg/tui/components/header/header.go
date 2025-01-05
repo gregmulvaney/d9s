@@ -13,11 +13,13 @@ import (
 	"github.com/gregmulvaney/d9s/pkg/tui/components/command"
 	"github.com/gregmulvaney/d9s/pkg/tui/views/containers"
 	"github.com/gregmulvaney/d9s/pkg/tui/views/images"
+	"github.com/gregmulvaney/d9s/pkg/tui/views/networks"
 )
 
 var keymaps = map[command.CommadMsg][][]string{
 	"containers": containers.Keymap,
 	"images":     images.Keymap,
+	"networks":   networks.Keymap,
 }
 
 type Model struct {

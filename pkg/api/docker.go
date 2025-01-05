@@ -7,6 +7,7 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/image"
+	"github.com/docker/docker/api/types/network"
 	docker "github.com/docker/docker/client"
 )
 
@@ -80,4 +81,12 @@ func (a Api) ImagesPrune() (image.PruneReport, error) {
 		return image.PruneReport{}, err
 	}
 	return report, nil
+}
+
+func (a Api) NetworksFetch() ([]network.Summary, error) {
+	networks, err := a.Client.NetworkList(context.Background(), network.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return networks, nil
 }

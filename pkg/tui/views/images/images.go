@@ -1,9 +1,14 @@
 package images
 
 import (
+	"strconv"
+	"strings"
+
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/docker/docker/api/types/image"
 	"github.com/gregmulvaney/bubbles/table"
 	"github.com/gregmulvaney/d9s/pkg/appstate"
+	"github.com/gregmulvaney/d9s/pkg/constants"
 )
 
 var Keymap = [][]string{
@@ -21,14 +26,31 @@ type Model struct {
 	table table.Model
 }
 
+func FetchImages() tea.Cmd {
+	return func() tea.Msg {
+		return fetchImageMsg(true)
+	}
+}
+
+func pruneImages(ctx *appstate.State) tea.Cmd {
+	return func() tea.Msg {
+		_, err := ctx.Api.ImagesPrune()
+		if err != nil {
+			return apiError(err)
+		}
+		return fetchImageMsg(true)
+	}
+}
+
 func New(ctx *appstate.State) (m Model) {
 	m.ctx = ctx
 
 	cols := []table.Column{
-		{Title: "#", Width: 4},
+		{Title: "#", Width: 5},
 		{Title: "ID", Flex: true},
 		{Title: "Tags", Flex: true},
 		{Title: "Size", Width: 20},
+		{Title: "Unused", Width: 8},
 	}
 
 	m.table = table.New(
@@ -47,14 +69,19 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.Type {
 		case tea.KeyCtrlP:
-			//
+			return m, pruneImages(m.ctx)
 		}
 
+	case constants.InitMsg:
+		return m, FetchImages()
+
 	case fetchImageMsg:
-		_, err := m.ctx.Api.ImagesFetch()
+		images, err := m.ctx.Api.ImagesFetch()
 		if err != nil {
 			panic(err)
 		}
+		m.table.SetRows(renderRows(images))
+		return m, tea.WindowSize()
 
 	case tea.WindowSizeMsg:
 		m.table.SetHeight(msg.Height - 12)
@@ -69,4 +96,22 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 
 func (m Model) View() string {
 	return m.table.View()
+}
+
+func renderRows(images []image.Summary) []table.Row {
+	var rows []table.Row
+
+	for i, image := range images {
+		index := strconv.Itoa(i)
+		id := image.ID
+		tags := strings.Join(image.RepoTags, ",")
+		size := strconv.Itoa(int(image.Size))
+		// TODO: Why is this -1 and what the fuck are the docs talking about
+		unused := false
+		if image.Containers == 0 {
+			unused = true
+		}
+		rows = append(rows, table.Row{index, id, tags, size, strconv.FormatBool(unused)})
+	}
+	return rows
 }
