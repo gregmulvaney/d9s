@@ -49,7 +49,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	case fetchVolumesMsg:
 		volumes, err := m.ctx.Api.VolumesFetch()
 		if err != nil {
-			return m, apiErrorMsg(err)
+			return m, apiError(err)
 		}
 		m.table.SetRows(renderRows(volumes))
 		return m, tea.WindowSize()
