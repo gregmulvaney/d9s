@@ -8,6 +8,7 @@ import (
 	"github.com/gregmulvaney/d9s/pkg/tui/views/containers"
 	"github.com/gregmulvaney/d9s/pkg/tui/views/images"
 	"github.com/gregmulvaney/d9s/pkg/tui/views/networks"
+	"github.com/gregmulvaney/d9s/pkg/tui/views/volumes"
 )
 
 type sessionState int
@@ -34,6 +35,7 @@ type Model struct {
 	containers containers.Model
 	images     images.Model
 	networks   networks.Model
+	volumes    volumes.Model
 }
 
 func New(ctx *appstate.State) (m Model) {
