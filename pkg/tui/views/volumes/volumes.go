@@ -10,7 +10,6 @@ import (
 
 type (
 	fetchVolumesMsg bool
-	apiErrorMsg     error
 )
 
 type Model struct {
@@ -21,12 +20,6 @@ type Model struct {
 func fetchVolumes() tea.Cmd {
 	return func() tea.Msg {
 		return fetchVolumesMsg(true)
-	}
-}
-
-func apiError(err error) tea.Cmd {
-	return func() tea.Msg {
-		return apiErrorMsg(err)
 	}
 }
 
@@ -49,7 +42,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	case fetchVolumesMsg:
 		volumes, err := m.ctx.Api.VolumesFetch()
 		if err != nil {
-			return m, apiError(err)
+			return m, constants.ApiError(err)
 		}
 		m.table.SetRows(renderRows(volumes))
 		return m, tea.WindowSize()

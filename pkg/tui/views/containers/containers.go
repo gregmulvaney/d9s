@@ -9,6 +9,7 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/gregmulvaney/bubbles/table"
 	"github.com/gregmulvaney/d9s/pkg/appstate"
+	"github.com/gregmulvaney/d9s/pkg/constants"
 )
 
 var Keymap = [][]string{
@@ -23,18 +24,11 @@ var Keymap = [][]string{
 
 type (
 	fetchContainersMsg bool
-	apiErrorMsg        error
 )
 
 type Model struct {
 	ctx   *appstate.State
 	table table.Model
-}
-
-func apiError(err error) tea.Cmd {
-	return func() tea.Msg {
-		return apiErrorMsg(err)
-	}
 }
 
 func fetchContainers(ctx *appstate.State) ([]types.Container, error) {
@@ -55,7 +49,7 @@ func startContainer(ctx *appstate.State, id string) tea.Cmd {
 	return func() tea.Msg {
 		err := ctx.Api.StartContainer(id)
 		if err != nil {
-			return apiErrorMsg(err)
+			return constants.ApiErrorMsg(err)
 		}
 
 		return fetchContainersMsg(true)
@@ -66,7 +60,7 @@ func stopContainer(ctx *appstate.State, id string) tea.Cmd {
 	return func() tea.Msg {
 		err := ctx.Api.StopContainer(id)
 		if err != nil {
-			return apiErrorMsg(err)
+			return constants.ApiErrorMsg(err)
 		}
 		return fetchContainersMsg(true)
 	}
@@ -76,7 +70,7 @@ func restartContainer(ctx *appstate.State, id string) tea.Cmd {
 	return func() tea.Msg {
 		err := ctx.Api.RestartContainer(id)
 		if err != nil {
-			return apiErrorMsg(err)
+			return constants.ApiErrorMsg(err)
 		}
 		return fetchContainersMsg(true)
 	}
@@ -86,7 +80,7 @@ func removeContainer(ctx *appstate.State, id string) tea.Cmd {
 	return func() tea.Msg {
 		err := ctx.Api.RemoveContainer(id)
 		if err != nil {
-			return apiErrorMsg(err)
+			return constants.ApiErrorMsg(err)
 		}
 		return fetchContainersMsg(true)
 	}
@@ -145,13 +139,10 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			return m, pauseContainer(m.ctx, selected[0])
 		}
 
-	case apiErrorMsg:
-		panic(msg)
-
 	case fetchContainersMsg:
 		containers, err := fetchContainers(m.ctx)
 		if err != nil {
-			return m, apiError(err)
+			return m, constants.ApiError(err)
 		}
 		rows := renderRows(containers)
 		m.table.SetRows(rows)

@@ -17,7 +17,6 @@ var Keymap = [][]string{
 
 type (
 	fetchImageMsg bool
-	apiError      error
 )
 
 type Model struct {
@@ -36,7 +35,7 @@ func pruneImages(ctx *appstate.State) tea.Cmd {
 	return func() tea.Msg {
 		_, err := ctx.Api.ImagesPrune()
 		if err != nil {
-			return apiError(err)
+			return constants.ApiErrorMsg(err)
 		}
 		return fetchImageMsg(true)
 	}

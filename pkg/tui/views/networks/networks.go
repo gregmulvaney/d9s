@@ -17,19 +17,12 @@ var Keymap = [][]string{
 
 type (
 	fetchNetworksMsg bool
-	apiErrorMsg      error
 )
 
 type Model struct {
 	ctx *appstate.State
 
 	table table.Model
-}
-
-func apiError(err error) tea.Cmd {
-	return func() tea.Msg {
-		return apiError(err)
-	}
 }
 
 func fetchNetworks() tea.Cmd {
@@ -72,16 +65,13 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			//
 		}
 
-	case apiErrorMsg:
-		//
-
 	case constants.InitMsg:
 		return m, fetchNetworks()
 
 	case fetchNetworksMsg:
 		networks, err := m.ctx.Api.NetworksFetch()
 		if err != nil {
-			return m, apiError(err)
+			return m, constants.ApiError(err)
 		}
 		m.table.SetRows(renderRows(networks))
 		return m, tea.WindowSize()

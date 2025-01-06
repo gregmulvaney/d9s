@@ -1,14 +1,16 @@
 package logs
 
 import (
+	"io"
+
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/gregmulvaney/d9s/pkg/appstate"
 )
 
 type Model struct {
-	ctx *appstate.State
-
+	ctx      *appstate.State
+	reader   io.Reader
 	viewport viewport.Model
 }
 
@@ -16,6 +18,10 @@ func New(ctx *appstate.State) (m Model) {
 	m.ctx = ctx
 	m.viewport = viewport.New(10, 20)
 	return m
+}
+
+func (m *Model) SetReader(reader io.Reader) {
+	m.reader = reader
 }
 
 func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
@@ -32,4 +38,8 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	cmds = append(cmds, cmd)
 
 	return m, tea.Batch(cmds...)
+}
+
+func (m Model) View() string {
+	return m.viewport.View()
 }

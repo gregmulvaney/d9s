@@ -6,6 +6,7 @@ import (
 	"github.com/gregmulvaney/bubbles/breadcrumbs"
 	"github.com/gregmulvaney/d9s/pkg/api"
 	"github.com/gregmulvaney/d9s/pkg/appstate"
+	"github.com/gregmulvaney/d9s/pkg/constants"
 	"github.com/gregmulvaney/d9s/pkg/tui/components/command"
 	"github.com/gregmulvaney/d9s/pkg/tui/components/content"
 	"github.com/gregmulvaney/d9s/pkg/tui/components/header"
@@ -83,6 +84,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, cmd)
 		m.showCommand = false
 		m.state = contentMode
+
+	case constants.ApiErrorMsg:
+		// TODO
 
 	case tea.WindowSizeMsg:
 		m.height = msg.Height
