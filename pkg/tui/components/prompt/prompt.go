@@ -1,11 +1,9 @@
-package command
+package prompt
 
 import (
-	"slices"
-
-	"github.com/charmbracelet/bubbles/cursor"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/gregmulvaney/d9s/pkg/appstate"
 )
 
 var commands = []string{
@@ -13,27 +11,32 @@ var commands = []string{
 	"images",
 	"networks",
 	"volumes",
-	"q",
 }
 
 type Model struct {
+	// State
+	ctx *appstate.State
+
+	// Elements
 	input textinput.Model
 }
 
-type CommadMsg string
+func New(ctx *appstate.State) (m Model) {
+	m.ctx = ctx
 
-func Execute(command string) tea.Cmd {
-	return func() tea.Msg {
-		return CommadMsg(command)
-	}
-}
-
-func New() (m Model) {
 	m.input = textinput.New()
-	m.input.SetSuggestions(commands)
 	m.input.ShowSuggestions = true
+	m.input.SetSuggestions(commands)
 
 	return m
+}
+
+func (m *Model) Focus() {
+	m.input.Focus()
+}
+
+func (m *Model) Reset() {
+	m.input.Reset()
 }
 
 func (m Model) Init() tea.Cmd {
@@ -48,15 +51,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.Type {
 		case tea.KeyEnter:
-			value := m.input.Value()
-			if !slices.Contains(commands, value) {
-				return m, tea.WindowSize()
-			}
-			if value == "q" {
-				return m, tea.Quit
-			}
-			m.input.Reset()
-			return m, Execute(value)
+			// TODO
 		}
 	}
 
@@ -64,15 +59,6 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	cmds = append(cmds, cmd)
 
 	return m, tea.Batch(cmds...)
-}
-
-func (m *Model) Focus() {
-	m.input.Focus()
-	m.input.Cursor.SetMode(cursor.CursorBlink)
-}
-
-func (m *Model) Reset() {
-	m.input.Reset()
 }
 
 func (m Model) View() string {

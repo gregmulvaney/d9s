@@ -9,23 +9,17 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/gregmulvaney/bubbles/keylist"
 	"github.com/gregmulvaney/d9s/pkg/appstate"
-	"github.com/gregmulvaney/d9s/pkg/constants"
-	"github.com/gregmulvaney/d9s/pkg/tui/components/command"
-	"github.com/gregmulvaney/d9s/pkg/tui/views/containers"
-	"github.com/gregmulvaney/d9s/pkg/tui/views/images"
-	"github.com/gregmulvaney/d9s/pkg/tui/views/networks"
+	"github.com/gregmulvaney/d9s/pkg/commands"
 )
 
-var keymaps = map[command.CommadMsg][][]string{
-	"containers": containers.Keymap,
-	"images":     images.Keymap,
-	"networks":   networks.Keymap,
-}
+var keymaps = map[commands.PromptMsg][][]string{}
 
 type Model struct {
+	// State
 	ctx   *appstate.State
 	width int
 
+	// Elements
 	status keylist.Model
 	keymap keylist.Model
 }
@@ -33,8 +27,8 @@ type Model struct {
 func New(ctx *appstate.State) (m Model) {
 	m.ctx = ctx
 
-	clientVersion := m.ctx.Api.Client.ClientVersion()
-	serverVersion, err := m.ctx.Api.Client.ServerVersion(context.Background())
+	clientVersion := m.ctx.DockerClient.ClientVersion()
+	serverVersion, err := m.ctx.DockerClient.ServerVersion(context.Background())
 	if err != nil {
 		panic(err)
 	}
@@ -62,8 +56,10 @@ func New(ctx *appstate.State) (m Model) {
 
 func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	switch msg := msg.(type) {
-	case command.CommadMsg:
+	// Set keymap based on the PromptMsg
+	case commands.PromptMsg:
 		m.keymap.SetItems(keymaps[msg])
+
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 	}
@@ -82,12 +78,5 @@ func (m Model) View() string {
 		MaxWidth(m.width / 3).
 		Render(m.keymap.View())
 
-	logo := lipgloss.NewStyle().
-		Width(m.width / 3).
-		MaxWidth(m.width / 3).
-		Foreground(lipgloss.Color(lipgloss.Color("214"))).
-		Align(lipgloss.Right).
-		Render(constants.LOGO_SMALL)
-
-	return lipgloss.JoinHorizontal(lipgloss.Left, status, keymap, logo)
+	return lipgloss.JoinHorizontal(lipgloss.Left, status, keymap)
 }

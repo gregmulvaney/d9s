@@ -1,7 +1,12 @@
 package appstate
 
-import "github.com/gregmulvaney/d9s/pkg/api"
+import (
+	docker "github.com/docker/docker/client"
+)
 
 type State struct {
-	Api api.Api
+	// Current height of the content element
+	ContentHeight int
+
+	DockerClient *docker.Client
 }
