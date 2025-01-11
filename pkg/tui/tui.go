@@ -49,6 +49,8 @@ func New() (m Model) {
 	}
 	m.ctx.DockerClient = dockerClient
 
+	m.ctx.ContentHeight = 0
+
 	// Initialize all elements
 	m.header = header.New(&m.ctx)
 	m.prompt = prompt.New(&m.ctx)
@@ -62,7 +64,7 @@ func New() (m Model) {
 }
 
 func (m Model) Init() tea.Cmd {
-	return tea.Batch(m.prompt.Init())
+	return tea.Batch(m.prompt.Init(), m.content.Init(), tea.WindowSize())
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -70,7 +72,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 
 	switch msg := msg.(type) {
-	// Handle key messages
 	case tea.KeyMsg:
 		// Handle keys with a known type
 		switch msg.Type {
@@ -136,7 +137,7 @@ func (m Model) View() string {
 	header := constants.HeaderStyle.
 		Width(m.width).
 		MaxWidth(m.width).
-		Render("header")
+		Render(m.header.View())
 
 	// Measure the height of the header element
 	_, headerHeight := lipgloss.Size(header)
@@ -147,7 +148,7 @@ func (m Model) View() string {
 	// If prompt is shown render the prompt element and measure its height
 	if m.showPrompt {
 		prompt = constants.PromptStyle.
-			Width(m.width - 3).
+			Width(m.width - 2).
 			PaddingLeft(1).
 			Render(m.prompt.View())
 		_, promptHeight = lipgloss.Size(prompt)
@@ -168,6 +169,7 @@ func (m Model) View() string {
 	content := constants.ContentStyle.
 		Width(m.width - 2).
 		Height(contentHeight).
+		MaxHeight(contentHeight + 2).
 		Render(m.content.View())
 
 	// Hack to circumvent blank elements still taking 1 unit of height

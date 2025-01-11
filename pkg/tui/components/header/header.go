@@ -10,9 +10,19 @@ import (
 	"github.com/gregmulvaney/bubbles/keylist"
 	"github.com/gregmulvaney/d9s/pkg/appstate"
 	"github.com/gregmulvaney/d9s/pkg/commands"
+	"github.com/gregmulvaney/d9s/pkg/constants"
+	"github.com/gregmulvaney/d9s/pkg/tui/views/containers"
+	"github.com/gregmulvaney/d9s/pkg/tui/views/images"
+	"github.com/gregmulvaney/d9s/pkg/tui/views/networks"
+	"github.com/gregmulvaney/d9s/pkg/tui/views/volumes"
 )
 
-var keymaps = map[commands.PromptMsg][][]string{}
+var keymaps = map[commands.PromptMsg][][]string{
+	"containers": containers.Keymap,
+	"images":     images.Keymap,
+	"networks":   networks.Keymap,
+	"volumes":    volumes.Keymap,
+}
 
 type Model struct {
 	// State
@@ -45,11 +55,19 @@ func New(ctx *appstate.State) (m Model) {
 		keylist.WithSeparator(":"),
 	)
 
+	keymapStyles := keylist.Styles{
+		Key:   lipgloss.NewStyle().Foreground(constants.KEYMAP_KEY_COLOR).Bold(true),
+		Value: lipgloss.NewStyle().Foreground(constants.KEYMAP_VALUE_COLOR),
+	}
+
 	m.keymap = keylist.New(
 		keylist.WithItems(keymaps["containers"]),
 		keylist.WithGrid(true),
 		keylist.WithMaxRows(6),
+		keylist.WithStyles(keymapStyles),
 	)
+
+	m.keymap.SetItems(keymaps["containers"])
 
 	return m
 }
@@ -78,5 +96,12 @@ func (m Model) View() string {
 		MaxWidth(m.width / 3).
 		Render(m.keymap.View())
 
-	return lipgloss.JoinHorizontal(lipgloss.Left, status, keymap)
+	logo := lipgloss.NewStyle().
+		Width(m.width / 3).
+		MaxWidth(m.width / 3).
+		Align(lipgloss.Right).
+		Foreground(constants.LOGO_COLOR).
+		Render(constants.LOGO_SMALL)
+
+	return lipgloss.JoinHorizontal(lipgloss.Left, status, keymap, logo)
 }
